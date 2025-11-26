@@ -1,0 +1,718 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Калькулятор экономии при оцифровке НДС</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 16px;
+        }
+        
+        .container { max-width: 1200px; margin: 0 auto; }
+        
+        .header { text-align: center; margin-bottom: 24px; }
+        .header h1 { font-size: 24px; color: white; margin-bottom: 8px; }
+        .header p { color: rgba(255,255,255,0.8); font-size: 16px; }
+        
+        .main-grid { display: flex; flex-direction: column; gap: 24px; }
+        
+        @media (min-width: 1024px) {
+            .main-grid { flex-direction: row; }
+            .input-section { width: 33%; }
+            .results-section { width: 67%; }
+        }
+        
+        .card {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 24px;
+            padding: 24px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+        }
+        
+        .card-title { font-size: 18px; font-weight: bold; color: #1f2937; margin-bottom: 20px; }
+        
+        .input-group { margin-bottom: 16px; }
+        .input-group label { display: block; font-size: 14px; font-weight: 500; color: #374151; margin-bottom: 6px; }
+        
+        .input-wrapper { position: relative; }
+        .input-wrapper input {
+            width: 100%;
+            padding: 12px 16px;
+            font-size: 16px;
+            border: 1px solid #d1d5db;
+            border-radius: 8px;
+            background: white;
+            -webkit-appearance: none;
+        }
+        .input-wrapper input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.2);
+        }
+        .input-unit {
+            position: absolute;
+            right: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #9ca3af;
+            font-size: 14px;
+        }
+        
+        .calculate-btn {
+            width: 100%;
+            padding: 16px;
+            margin-top: 24px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            font-size: 16px;
+            font-weight: bold;
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+        .calculate-btn:active {
+            opacity: 0.9;
+            transform: scale(0.98);
+        }
+        
+        .hint { text-align: center; color: #6b7280; font-size: 14px; margin-top: 12px; }
+        
+        .results-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 24px; }
+        .results-grid .result-card:nth-child(5) { grid-column: 1 / -1; }
+        
+        .result-card { padding: 20px; border-radius: 16px; position: relative; text-align: center; }
+        .result-card.green { background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%); }
+        .result-card.blue { background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%); }
+        .result-card.purple { background: linear-gradient(135deg, #ede9fe 0%, #ddd6fe 100%); }
+        .result-card.orange { background: linear-gradient(135deg, #ffedd5 0%, #fed7aa 100%); }
+        .result-card.teal { background: linear-gradient(135deg, #ccfbf1 0%, #99f6e4 100%); }
+        
+        .result-icon { font-size: 24px; margin-bottom: 8px; }
+        .result-value { font-size: 20px; font-weight: bold; color: #1f2937; margin-bottom: 4px; }
+        .result-title { font-size: 13px; font-weight: 500; color: #4b5563; }
+        .result-subtitle { font-size: 11px; color: #6b7280; margin-top: 4px; }
+        
+        .result-card { position: relative; }
+        .card-formula-btn {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            width: 24px;
+            height: 24px;
+            border: none;
+            background: rgba(0,0,0,0.1);
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .card-formula-btn:hover { background: rgba(0,0,0,0.15); }
+        
+        .card-formula-content {
+            display: none;
+            margin-top: 12px;
+            padding-top: 12px;
+            border-top: 1px solid rgba(0,0,0,0.1);
+            text-align: left;
+        }
+        .card-formula-content.open { display: block; }
+        .card-formula-content .formula-label { font-size: 11px; margin-bottom: 4px; }
+        .card-formula-content .formula-block { font-size: 9px; padding: 6px; margin-bottom: 6px; }
+        .card-formula-content .formula-values { font-size: 10px; padding: 6px; margin-bottom: 6px; }
+        .card-formula-content .formula-result { font-size: 10px; padding: 6px; }
+        
+        .blurred { opacity: 0.4; filter: blur(2px); }
+        
+        .detail-section { margin-bottom: 24px; }
+        .detail-row { background: #f9fafb; border-radius: 12px; overflow: hidden; }
+        .detail-header { display: flex; justify-content: space-between; align-items: center; padding: 14px; }
+        .detail-left { display: flex; align-items: center; gap: 12px; }
+        .detail-icon { font-size: 24px; }
+        .detail-title { font-weight: 500; color: #1f2937; }
+        .detail-subtitle { font-size: 13px; color: #6b7280; }
+        .detail-value { font-size: 18px; font-weight: bold; color: #059669; }
+        
+        .formula-toggle {
+            width: 100%;
+            padding: 12px 16px;
+            background: #f3f4f6;
+            border: none;
+            border-top: 1px solid #e5e7eb;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 14px;
+            color: #4b5563;
+            text-align: left;
+        }
+        .formula-toggle:hover { background: #e5e7eb; }
+        
+        .formula-content { display: none; padding: 16px; background: white; border-top: 1px solid #e5e7eb; }
+        .formula-content.open { display: block; }
+        
+        .formula-block { background: #f9fafb; padding: 12px; border-radius: 8px; font-family: monospace; font-size: 12px; margin-bottom: 12px; overflow-x: auto; }
+        .formula-values { background: #eff6ff; padding: 12px; border-radius: 8px; margin-bottom: 12px; font-size: 13px; line-height: 1.6; }
+        .formula-result { background: #ecfdf5; padding: 12px; border-radius: 8px; font-size: 13px; }
+        .formula-label { font-weight: 500; color: #374151; margin-bottom: 8px; font-size: 14px; }
+        .param-hint { color: #6b7280; font-size: 11px; }
+        
+        .benefits-row-1 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; margin-bottom: 12px; }
+        .benefits-row-2 { display: flex; justify-content: center; gap: 12px; }
+        
+        .benefit-card { padding: 16px; border-radius: 12px; text-align: center; }
+        .benefits-row-2 .benefit-card { width: 33%; }
+        
+        .benefit-card.red { background: linear-gradient(135deg, #fef2f2 0%, #fecaca 100%); }
+        .benefit-card.blue { background: linear-gradient(135deg, #eff6ff 0%, #bfdbfe 100%); }
+        .benefit-card.green { background: linear-gradient(135deg, #ecfdf5 0%, #a7f3d0 100%); }
+        .benefit-card.purple { background: linear-gradient(135deg, #faf5ff 0%, #e9d5ff 100%); }
+        .benefit-card.indigo { background: linear-gradient(135deg, #eef2ff 0%, #c7d2fe 100%); }
+        
+        .benefit-icon { font-size: 22px; margin-bottom: 8px; }
+        .benefit-value { font-size: 18px; font-weight: bold; margin-bottom: 4px; }
+        .benefit-value.red { color: #dc2626; }
+        .benefit-value.blue { color: #2563eb; }
+        .benefit-value.green { color: #059669; }
+        .benefit-value.purple { color: #7c3aed; }
+        .benefit-value.indigo { color: #4f46e5; }
+        .benefit-title { font-size: 11px; color: #4b5563; }
+        
+        .footer { text-align: center; margin-top: 32px; color: rgba(255,255,255,0.7); font-size: 14px; }
+        
+        @media (max-width: 640px) {
+            .header h1 { font-size: 20px; }
+            .results-grid { gap: 8px; }
+            .result-card { padding: 14px; }
+            .result-value { font-size: 16px; }
+            .benefits-row-1 { gap: 8px; }
+            .benefits-row-2 { gap: 8px; }
+            .benefit-card { padding: 12px; }
+            .benefit-value { font-size: 15px; }
+            .benefit-title { font-size: 9px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>💼 Калькулятор экономии</h1>
+            <p>Оцифровка нарядно-допускной системы</p>
+        </div>
+        
+        <div class="main-grid">
+            <div class="input-section">
+                <div class="card">
+                    <div class="card-title">⚙️ Входные параметры</div>
+                    
+                    <div class="input-group">
+                        <label>Нарядов-допусков в год</label>
+                        <div class="input-wrapper">
+                            <input type="number" id="inp1" value="500">
+                            <span class="input-unit">шт.</span>
+                        </div>
+                    </div>
+                    
+                    <div class="input-group">
+                        <label>Время на согласование наряда на бумаге (мин)</label>
+                        <div class="input-wrapper">
+                            <input type="number" id="inp2" value="45">
+                        </div>
+                    </div>
+                    
+                    <div class="input-group">
+                        <label>Время на согласование электронного наряда (мин)</label>
+                        <div class="input-wrapper">
+                            <input type="number" id="inp3" value="15">
+                        </div>
+                    </div>
+                    
+                    <div class="input-group">
+                        <label>Стоимость часа работы специалиста (₽)</label>
+                        <div class="input-wrapper">
+                            <input type="number" id="inp4" value="1500">
+                        </div>
+                    </div>
+                    
+                    <div class="input-group">
+                        <label>Сотрудников в процессе</label>
+                        <div class="input-wrapper">
+                            <input type="number" id="inp5" value="5">
+                            <span class="input-unit">чел.</span>
+                        </div>
+                    </div>
+                    
+                    <div class="input-group">
+                        <label>Стоимость внедрения системы (₽)</label>
+                        <div class="input-wrapper">
+                            <input type="number" id="inp6" value="500000">
+                        </div>
+                    </div>
+                    
+                    <button class="calculate-btn" id="calcBtn">
+                        🧮 Рассчитать экономию
+                    </button>
+                    
+                    <p class="hint" id="hint">Введите данные и нажмите кнопку для расчёта</p>
+                </div>
+            </div>
+            
+            <div class="results-section">
+                <div class="results-grid">
+                    <!-- Годовая экономия -->
+                    <div class="result-card green blurred" id="c1">
+                        <div class="result-icon">💰</div>
+                        <div class="result-value" id="r1">—</div>
+                        <div class="result-title">Годовая экономия</div>
+                        <button class="card-formula-btn" id="annualFormulaBtn">
+                            <span id="tIconAnnual">➕</span>
+                        </button>
+                        <div class="card-formula-content" id="fContentAnnual">
+                            <div class="formula-label">Формула:</div>
+                            <div class="formula-block">
+                                Экономия = (Время_бумага − Время_электр) ÷ 60 × Ставка × Наряды × Сотрудники
+                            </div>
+                            <div class="formula-label">Подставляем:</div>
+                            <div class="formula-values" id="fValsAnnual">—</div>
+                            <div class="formula-label">Результат:</div>
+                            <div class="formula-result" id="fResAnnual">—</div>
+                        </div>
+                    </div>
+                    
+                    <!-- Экономия за 5 лет -->
+                    <div class="result-card blue blurred" id="c2">
+                        <div class="result-icon">📈</div>
+                        <div class="result-value" id="r2">—</div>
+                        <div class="result-title">Экономия за 5 лет</div>
+                        <button class="card-formula-btn" id="fiveYearFormulaBtn">
+                            <span id="tIconFiveYear">➕</span>
+                        </button>
+                        <div class="card-formula-content" id="fContentFiveYear">
+                            <div class="formula-label">Формула:</div>
+                            <div class="formula-block">
+                                Экономия_5лет = Годовая_экономия × 5
+                            </div>
+                            <div class="formula-label">Подставляем:</div>
+                            <div class="formula-values" id="fValsFiveYear">—</div>
+                            <div class="formula-label">Результат:</div>
+                            <div class="formula-result" id="fResFiveYear">—</div>
+                        </div>
+                    </div>
+                    
+                    <!-- Срок окупаемости -->
+                    <div class="result-card teal blurred" id="c5">
+                        <div class="result-icon">⏳</div>
+                        <div class="result-value" id="r7">—</div>
+                        <div class="result-title">Срок окупаемости</div>
+                        <button class="card-formula-btn" id="paybackFormulaBtn">
+                            <span id="tIconPayback">➕</span>
+                        </button>
+                        <div class="card-formula-content" id="fContentPayback">
+                            <div class="formula-label">Формула:</div>
+                            <div class="formula-block">
+                                Срок (мес.) = Стоимость_внедрения ÷ Годовая_экономия × 12<br>
+                                Дни = остаток × 30
+                            </div>
+                            <div class="formula-label">Подставляем:</div>
+                            <div class="formula-values" id="fValsPayback">—</div>
+                            <div class="formula-label">Результат:</div>
+                            <div class="formula-result" id="fResPayback">—</div>
+                        </div>
+                    </div>
+                    
+                    <!-- Экономия времени -->
+                    <div class="result-card purple blurred" id="c3">
+                        <div class="result-icon">⏱️</div>
+                        <div class="result-value" id="r3">—</div>
+                        <div class="result-title">Экономия времени</div>
+                        <div class="result-subtitle" id="r3sub"></div>
+                        <button class="card-formula-btn" id="timeFormulaBtn">
+                            <span id="tIconTime">➕</span>
+                        </button>
+                        <div class="card-formula-content" id="fContentTime">
+                            <div class="formula-label">Формула:</div>
+                            <div class="formula-block">
+                                Время = (Время_бумага − Время_электр) × Наряды ÷ 60
+                            </div>
+                            <div class="formula-label">Подставляем:</div>
+                            <div class="formula-values" id="fValsTime">—</div>
+                            <div class="formula-label">Результат:</div>
+                            <div class="formula-result" id="fResTime">—</div>
+                        </div>
+                    </div>
+                    
+                    <!-- Рост производительности -->
+                    <div class="result-card orange blurred" id="c4">
+                        <div class="result-icon">🚀</div>
+                        <div class="result-value" id="r4">—</div>
+                        <div class="result-title">Рост производительности</div>
+                        <button class="card-formula-btn" id="prodFormulaBtn">
+                            <span id="tIconProd">➕</span>
+                        </button>
+                        <div class="card-formula-content" id="fContentProd">
+                            <div class="formula-label">Формула:</div>
+                            <div class="formula-block">
+                                Рост = (Время_бумага − Время_электр) ÷ Время_бумага × 100%
+                            </div>
+                            <div class="formula-label">Подставляем:</div>
+                            <div class="formula-values" id="fValsProd">—</div>
+                            <div class="formula-label">Результат:</div>
+                            <div class="formula-result" id="fResProd">—</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="card detail-section blurred" id="detailCard">
+                    <div class="card-title">📊 Детализация экономии</div>
+                    <div class="detail-row">
+                        <div class="detail-header">
+                            <div class="detail-left">
+                                <span class="detail-icon">👥</span>
+                                <div>
+                                    <div class="detail-title">Экономия на персонале</div>
+                                    <div class="detail-subtitle">Сокращение трудозатрат</div>
+                                </div>
+                            </div>
+                            <div class="detail-value" id="r5">—</div>
+                        </div>
+                        
+                        <button class="formula-toggle" id="formulaBtn">
+                            <span id="tIcon">➕</span> Показать формулу расчёта
+                        </button>
+                        
+                        <div class="formula-content" id="fContent">
+                            <div class="formula-label">Формула:</div>
+                            <div class="formula-block">
+                                Экономия = (Время_бумага − Время_электр) ÷ 60 × Ставка × Наряды × Сотрудники
+                            </div>
+                            
+                            <div class="formula-label">Подставляем значения:</div>
+                            <div class="formula-values" id="fVals">—</div>
+                            
+                            <div class="formula-label">Результат:</div>
+                            <div class="formula-result" id="fRes">—</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="card blurred" id="benefitsCard">
+                    <div class="card-title">✨ Дополнительные преимущества</div>
+                    <div class="benefits-row-1">
+                        <div class="benefit-card red">
+                            <div class="benefit-icon">🛡️</div>
+                            <div class="benefit-value red">-65%</div>
+                            <div class="benefit-title">Снижение ошибок</div>
+                        </div>
+                        <div class="benefit-card blue">
+                            <div class="benefit-icon">🔎</div>
+                            <div class="benefit-value blue">5 сек</div>
+                            <div class="benefit-title">Поиск в архиве</div>
+                        </div>
+                        <div class="benefit-card green">
+                            <div class="benefit-icon">📡</div>
+                            <div class="benefit-value green">24/7</div>
+                            <div class="benefit-title">Контроль работ</div>
+                        </div>
+                    </div>
+                    <div class="benefits-row-2">
+                        <div class="benefit-card purple">
+                            <div class="benefit-icon">⚡</div>
+                            <div class="benefit-value purple" id="r6">3x</div>
+                            <div class="benefit-title">Быстрее согласование</div>
+                        </div>
+                        <div class="benefit-card indigo">
+                            <div class="benefit-icon">📊</div>
+                            <div class="benefit-value indigo">100%</div>
+                            <div class="benefit-title">Прозрачность</div>
+                        </div>
+                    </div>
+                    
+                    <button class="formula-toggle" id="benefitsFormulaBtn" style="margin-top: 16px; border-radius: 8px; border: 1px solid #e5e7eb;">
+                        <span id="tIcon2">➕</span> Показать обоснование показателей
+                    </button>
+                    
+                    <div class="formula-content" id="fContent2" style="margin-top: 12px; border-radius: 8px; border: 1px solid #e5e7eb;">
+                        <!-- Снижение ошибок -->
+                        <div class="formula-label">🛡️ Снижение ошибок: -65%</div>
+                        <div class="formula-values" style="margin-bottom: 16px;">
+                            <strong>Источник:</strong> Среднеотраслевая статистика внедрения электронных систем управления нарядами-допусками.<br><br>
+                            <strong>Факторы снижения:</strong><br>
+                            • Исключение ошибок ручного заполнения<br>
+                            • Автоматическая проверка полноты данных<br>
+                            • Контроль сроков действия допусков<br>
+                            • Исключение потери документов
+                        </div>
+                        
+                        <!-- Поиск в архиве -->
+                        <div class="formula-label">🔎 Поиск в архиве: 5 сек</div>
+                        <div class="formula-values" style="margin-bottom: 16px;">
+                            <strong>Сравнение:</strong><br>
+                            • Бумажный архив: 15-60 минут на поиск документа<br>
+                            • Электронная система: 5 секунд (поиск по любому параметру)<br><br>
+                            <strong>Формула ускорения:</strong><br>
+                            Среднее время поиска на бумаге (30 мин) ÷ Электронный поиск (5 сек) = <strong style="color:#2563eb">360x быстрее</strong>
+                        </div>
+                        
+                        <!-- Контроль работ -->
+                        <div class="formula-label">📡 Контроль работ: 24/7</div>
+                        <div class="formula-values" style="margin-bottom: 16px;">
+                            <strong>Возможности:</strong><br>
+                            • Мониторинг статуса всех нарядов в реальном времени<br>
+                            • Уведомления о нарушениях и истечении сроков<br>
+                            • Доступ с любого устройства<br>
+                            • Автоматические отчёты для руководства
+                        </div>
+                        
+                        <!-- Быстрее согласование -->
+                        <div class="formula-label">⚡ Быстрее согласование</div>
+                        <div class="formula-values" style="margin-bottom: 16px;">
+                            <strong>Формула:</strong><br>
+                            Время на бумаге ÷ Время в электронной системе = Коэффициент ускорения<br><br>
+                            <strong>Ваши данные:</strong><br>
+                            <span id="fBenefitCalc">—</span>
+                        </div>
+                        
+                        <!-- Прозрачность -->
+                        <div class="formula-label">📊 Прозрачность: 100%</div>
+                        <div class="formula-values">
+                            <strong>Что обеспечивается:</strong><br>
+                            • Полная история изменений каждого наряда<br>
+                            • Фиксация времени и автора каждого действия<br>
+                            • Невозможность удаления или подмены данных<br>
+                            • Мгновенный доступ к любой информации для аудита
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="footer">Калькулятор экономии при оцифровке нарядно-допускной системы</div>
+    </div>
+    
+    <script>
+        function fmt(n) {
+            return Math.round(n).toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ");
+        }
+        
+        function getNum(id) {
+            return parseFloat(document.getElementById(id).value) || 0;
+        }
+        
+        function calc() {
+            var permits = getNum("inp1");
+            var paperT = getNum("inp2");
+            var digitalT = getNum("inp3");
+            var rate = getNum("inp4");
+            var empl = getNum("inp5");
+            var projectCost = getNum("inp6");
+            
+            var savedMin = (paperT - digitalT) * permits;
+            var savedHrs = savedMin / 60;
+            var laborSave = (paperT - digitalT) / 60 * rate * permits * empl;
+            var annual = laborSave;
+            var fiveYr = annual * 5;
+            var prodInc = paperT > 0 ? Math.round((paperT - digitalT) / paperT * 100) : 0;
+            
+            // Расчёт срока окупаемости в месяцах и днях
+            var paybackMonths = annual > 0 ? (projectCost / annual) * 12 : 0;
+            var paybackYears = Math.floor(paybackMonths / 12);
+            var paybackRemainMonths = Math.floor(paybackMonths % 12);
+            var paybackDays = Math.round((paybackMonths % 1) * 30);
+            var paybackText = "";
+            if (paybackYears > 0) {
+                if (paybackRemainMonths > 0) {
+                    paybackText = paybackYears + " г. " + paybackRemainMonths + " мес.";
+                } else if (paybackDays > 0) {
+                    paybackText = paybackYears + " г. " + paybackDays + " дн.";
+                } else {
+                    paybackText = paybackYears + " г.";
+                }
+            } else if (paybackRemainMonths > 0) {
+                if (paybackDays > 0) {
+                    paybackText = paybackRemainMonths + " мес. " + paybackDays + " дн.";
+                } else {
+                    paybackText = paybackRemainMonths + " мес.";
+                }
+            } else if (paybackDays > 0) {
+                paybackText = paybackDays + " дн.";
+            } else {
+                paybackText = "0 дн.";
+            }
+            
+            document.getElementById("r1").textContent = fmt(annual) + " ₽";
+            document.getElementById("r2").textContent = fmt(fiveYr) + " ₽";
+            document.getElementById("r3").textContent = fmt(Math.round(savedHrs)) + " ч.";
+            document.getElementById("r3sub").textContent = fmt(Math.round(savedMin)) + " минут в год";
+            document.getElementById("r4").textContent = "+" + prodInc + "%";
+            document.getElementById("r5").textContent = fmt(laborSave) + " ₽";
+            document.getElementById("r7").textContent = paybackText;
+            
+            document.getElementById("fVals").innerHTML = 
+                "(" + paperT + " <span class='param-hint'>(бумага)</span> − " + 
+                digitalT + " <span class='param-hint'>(электр.)</span>) ÷ 60 × " +
+                fmt(rate) + " <span class='param-hint'>(ставка)</span> × " +
+                fmt(permits) + " <span class='param-hint'>(наряды)</span> × " +
+                empl + " <span class='param-hint'>(сотр.)</span>";
+            
+            document.getElementById("fRes").innerHTML = 
+                "(" + paperT + " − " + digitalT + ") ÷ 60 × " + fmt(rate) + " × " + fmt(permits) + " × " + empl + 
+                " = <strong style='color:#059669'>" + fmt(laborSave) + " ₽</strong>";
+            
+            document.getElementById("c1").classList.remove("blurred");
+            document.getElementById("c2").classList.remove("blurred");
+            document.getElementById("c5").classList.remove("blurred");
+            document.getElementById("c3").classList.remove("blurred");
+            document.getElementById("c4").classList.remove("blurred");
+            document.getElementById("detailCard").classList.remove("blurred");
+            document.getElementById("benefitsCard").classList.remove("blurred");
+            
+            // Расчёт коэффициента ускорения согласования
+            var speedup = digitalT > 0 ? (paperT / digitalT) : 0;
+            document.getElementById("r6").textContent = speedup.toFixed(1) + "x";
+            
+            document.getElementById("fBenefitCalc").innerHTML = 
+                paperT + " мин <span class='param-hint'>(бумага)</span> ÷ " + 
+                digitalT + " мин <span class='param-hint'>(электр.)</span> = <strong style='color:#7c3aed'>" + 
+                speedup.toFixed(1) + "x быстрее</strong>";
+            
+            // Формула для Годовой экономии
+            document.getElementById("fValsAnnual").innerHTML = 
+                "(" + paperT + " − " + digitalT + ") ÷ 60 × " + fmt(rate) + " × " + fmt(permits) + " × " + empl;
+            document.getElementById("fResAnnual").innerHTML = 
+                "<strong style='color:#059669'>" + fmt(annual) + " ₽</strong>";
+            
+            // Формулы для Экономия времени
+            document.getElementById("fValsTime").innerHTML = 
+                "(" + paperT + " − " + digitalT + ") × " + fmt(permits) + " ÷ 60";
+            document.getElementById("fResTime").innerHTML = 
+                "<strong style='color:#7c3aed'>" + fmt(Math.round(savedHrs)) + " ч.</strong> (" + fmt(Math.round(savedMin)) + " мин)";
+            
+            // Формулы для Рост производительности
+            document.getElementById("fValsProd").innerHTML = 
+                "(" + paperT + " − " + digitalT + ") ÷ " + paperT + " × 100%";
+            document.getElementById("fResProd").innerHTML = 
+                "<strong style='color:#ea580c'>+" + prodInc + "%</strong>";
+            
+            // Формула для 5 лет
+            document.getElementById("fValsFiveYear").innerHTML = 
+                fmt(annual) + " ₽ × 5 лет";
+            document.getElementById("fResFiveYear").innerHTML = 
+                "<strong style='color:#2563eb'>" + fmt(fiveYr) + " ₽</strong>";
+            
+            // Формула для срока окупаемости
+            var paybackMonthsRaw = annual > 0 ? (projectCost / annual) * 12 : 0;
+            document.getElementById("fValsPayback").innerHTML = 
+                fmt(projectCost) + " ₽ ÷ " + fmt(annual) + " ₽ × 12 = " + paybackMonthsRaw.toFixed(2) + " мес.";
+            document.getElementById("fResPayback").innerHTML = 
+                "<strong style='color:#0d9488'>" + paybackText + "</strong>";
+            
+            document.getElementById("hint").style.display = "none";
+        }
+        
+        function toggleFormula() {
+            var content = document.getElementById("fContent");
+            var icon = document.getElementById("tIcon");
+            if (content.classList.contains("open")) {
+                content.classList.remove("open");
+                icon.textContent = "➕";
+            } else {
+                content.classList.add("open");
+                icon.textContent = "➖";
+            }
+        }
+        
+        document.getElementById("calcBtn").addEventListener("click", calc);
+        document.getElementById("formulaBtn").addEventListener("click", toggleFormula);
+        document.getElementById("benefitsFormulaBtn").addEventListener("click", toggleFormula2);
+        document.getElementById("annualFormulaBtn").addEventListener("click", toggleFormulaAnnual);
+        document.getElementById("fiveYearFormulaBtn").addEventListener("click", toggleFormulaFiveYear);
+        document.getElementById("paybackFormulaBtn").addEventListener("click", toggleFormulaPayback);
+        document.getElementById("timeFormulaBtn").addEventListener("click", toggleFormulaTime);
+        document.getElementById("prodFormulaBtn").addEventListener("click", toggleFormulaProd);
+        
+        function toggleFormulaAnnual() {
+            var content = document.getElementById("fContentAnnual");
+            var icon = document.getElementById("tIconAnnual");
+            if (content.classList.contains("open")) {
+                content.classList.remove("open");
+                icon.textContent = "➕";
+            } else {
+                content.classList.add("open");
+                icon.textContent = "➖";
+            }
+        }
+        
+        function toggleFormulaFiveYear() {
+            var content = document.getElementById("fContentFiveYear");
+            var icon = document.getElementById("tIconFiveYear");
+            if (content.classList.contains("open")) {
+                content.classList.remove("open");
+                icon.textContent = "➕";
+            } else {
+                content.classList.add("open");
+                icon.textContent = "➖";
+            }
+        }
+        
+        function toggleFormulaPayback() {
+            var content = document.getElementById("fContentPayback");
+            var icon = document.getElementById("tIconPayback");
+            if (content.classList.contains("open")) {
+                content.classList.remove("open");
+                icon.textContent = "➕";
+            } else {
+                content.classList.add("open");
+                icon.textContent = "➖";
+            }
+        }
+        
+        function toggleFormula2() {
+            var content = document.getElementById("fContent2");
+            var icon = document.getElementById("tIcon2");
+            if (content.classList.contains("open")) {
+                content.classList.remove("open");
+                icon.textContent = "➕";
+            } else {
+                content.classList.add("open");
+                icon.textContent = "➖";
+            }
+        }
+        
+        function toggleFormulaTime() {
+            var content = document.getElementById("fContentTime");
+            var icon = document.getElementById("tIconTime");
+            if (content.classList.contains("open")) {
+                content.classList.remove("open");
+                icon.textContent = "➕";
+            } else {
+                content.classList.add("open");
+                icon.textContent = "➖";
+            }
+        }
+        
+        function toggleFormulaProd() {
+            var content = document.getElementById("fContentProd");
+            var icon = document.getElementById("tIconProd");
+            if (content.classList.contains("open")) {
+                content.classList.remove("open");
+                icon.textContent = "➕";
+            } else {
+                content.classList.add("open");
+                icon.textContent = "➖";
+            }
+        }
+    </script>
+</body>
+</html>
